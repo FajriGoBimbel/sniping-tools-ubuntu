@@ -21,30 +21,32 @@ Dependensi (sudah ada di Ubuntu desktop 22.04/24.04):
 
 ## Cara install
 
-### Cara tercepat — dari APT repository (tanpa download manual)
-
+### Cara tercepat — satu perintah (Ubuntu & Fedora)
 
 ```bash
 curl -fsSL https://fajrigobimbel.github.io/sniping-tools-ubuntu/install.sh | sudo sh
 ```
 
-Perintah itu menambahkan repository Snipper beserta kunci tanda tangannya, lalu menjalankan `apt install snipper`.
-Setelah itu, Snipper dikelola apt seperti aplikasi lain:
+Perintah yang sama berlaku di **Ubuntu 22.04/24.04** dan **Fedora 41+**.
+Script mendeteksi distro, menambahkan repository Snipper beserta kunci tanda tangannya,
+lalu menjalankan `apt install snipper` atau `dnf install snipper`.
+Setelah itu, Snipper dikelola package manager seperti aplikasi lain:
 
-```bash
-sudo apt install snipper                  # pasang ulang di kemudian hari
-sudo apt update && sudo apt upgrade       # update ke versi terbaru
-sudo apt remove snipper                   # uninstall
-```
+| | Ubuntu | Fedora |
+| --- | --- | --- |
+| Pasang ulang | `sudo apt install snipper` | `sudo dnf install snipper` |
+| Update | `sudo apt update && sudo apt upgrade` | `sudo dnf upgrade` |
+| Uninstall | `sudo apt remove snipper` | `sudo dnf remove snipper` |
 
-Kalau hanya ingin menambahkan repository dan install sendiri dengan apt:
+Kalau hanya ingin menambahkan repository, lalu install sendiri:
 
 ```bash
 curl -fsSL https://fajrigobimbel.github.io/sniping-tools-ubuntu/install.sh | sudo sh -s -- --setup-only
-sudo apt install snipper
+sudo apt install snipper      # Ubuntu
+sudo dnf install snipper      # Fedora
 ```
 
-Cara manual tanpa script:
+Cara manual tanpa script, untuk Ubuntu:
 
 ```bash
 sudo curl -fsSLo /usr/share/keyrings/snipper-archive-keyring.gpg https://fajrigobimbel.github.io/sniping-tools-ubuntu/snipper-archive-keyring.gpg
@@ -52,8 +54,16 @@ sudo curl -fsSLo /etc/apt/sources.list.d/snipper.sources https://fajrigobimbel.g
 sudo apt update && sudo apt install snipper
 ```
 
-> `apt` tidak bisa langsung menginstall dari sebuah link. Karena itu, repository perlu ditambahkan **sekali** di awal.
-> Setelahnya cukup `sudo apt install snipper` atau `sudo apt upgrade`.
+Untuk Fedora:
+
+```bash
+sudo rpm --import https://fajrigobimbel.github.io/sniping-tools-ubuntu/snipper-archive-keyring.asc
+sudo curl -fsSLo /etc/yum.repos.d/snipper.repo https://fajrigobimbel.github.io/sniping-tools-ubuntu/snipper.repo
+sudo dnf install snipper
+```
+
+> apt/dnf tidak bisa langsung menginstall dari sebuah link. Karena itu, repository perlu ditambahkan **sekali** di awal.
+> Setelahnya cukup `install` / `upgrade` seperti biasa.
 
 ### Cara lain (dari source)
 
@@ -158,8 +168,8 @@ journalctl --user --since "-10min" | grep -i snipper
 
 ## Publikasi APT repository
 
-Untuk maintainer. Cukup dilakukan sekali; setelah itu setiap push ke `main` otomatis mem-build `.deb`,
-menandatangani repository, dan mempublikasikannya ke GitHub Pages (`.github/workflows/apt-repo.yml`).
+Untuk maintainer. Cukup dilakukan sekali; setelah itu setiap push ke `main` otomatis mem-build `.deb` dan `.rpm`
+(di container `fedora:41`), menandatangani repository apt + dnf, dan mempublikasikannya ke GitHub Pages (`.github/workflows/apt-repo.yml`).
 
 1. **Buat repo GitHub** (saat ini `FajriGoBimbel/sniping-tools-ubuntu`), lalu push proyek ini ke branch `main`.
 2. **Simpan kunci penanda tangan sebagai secret.** Buka *Settings → Secrets and variables → Actions → New repository secret*.

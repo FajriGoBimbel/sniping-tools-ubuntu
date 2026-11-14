@@ -1,32 +1,17 @@
 #!/bin/sh
-# Snipper APT repository setup.
+# Snipper repository setup for Ubuntu/Debian (apt) and Fedora (dnf).
 #   curl -fsSL @REPO_URL@/install.sh | sudo sh
 # Adds the signed Snipper repository, then installs snipper.
 # Only add the repository:  curl -fsSL @REPO_URL@/install.sh | sudo sh -s -- --setup-only
-# Afterwards updates arrive with: sudo apt update && sudo apt upgrade
+# Afterwards updates arrive with the normal system update (apt upgrade / dnf upgrade).
 set -eu
 
 REPO_URL="@REPO_URL@"
-KEYRING=/usr/share/keyrings/snipper-archive-keyring.gpg
-SOURCES=/etc/apt/sources.list.d/snipper.sources
+SETUP_ONLY=0
+[ "${1:-}" = "--setup-only" ] && SETUP_ONLY=1
 
 if [ "$(id -u)" -ne 0 ]; then
   echo "Jalankan dengan sudo:  curl -fsSL $REPO_URL/install.sh | sudo sh" >&2
-  exit 1
-fi
-
-if ! command -v apt-get >/dev/null 2>&1; then
-  . /etc/os-release 2>/dev/null || true
-  echo "Sistem ini (${PRETTY_NAME:-distro non-Debian}) tidak memakai apt, jadi repository .deb Snipper tidak bisa dipakai." >&2
-  if command -v dnf >/dev/null 2>&1; then
-    cat >&2 <<MSG
-
-Untuk Fedora, pasang dari source (per user, tanpa repository):
-  sudo dnf install -y python3-gobject python3-cairo gtk4 libadwaita git
-  git clone https://github.com/FajriGoBimbel/sniping-tools-ubuntu.git
-  cd sniping-tools-ubuntu && ./install.sh
-MSG
-  fi
   exit 1
 fi
 
@@ -37,32 +22,74 @@ fetch() {
   fi
 }
 
-echo "==> Menambahkan kunci repository Snipper"
-tmp="$(mktemp)"
-fetch "$REPO_URL/snipper-archive-keyring.gpg" "$tmp"
-install -m 0644 "$tmp" "$KEYRING"
-rm -f "$tmp"
+done_msg() {
+  echo
+  echo "Snipper terpasang. Buka 'Snipper' dari menu aplikasi, klik 'Izinkan', lalu pilih Allow."
+  echo "Update berikutnya cukup: $1"
+}
 
-echo "==> Menambahkan repository $REPO_URL"
-cat > "$SOURCES" <<SRC
+setup_apt() {
+  KEYRING=/usr/share/keyrings/snipper-archive-keyring.gpg
+  SOURCES=/etc/apt/sources.list.d/snipper.sources
+
+  echo "==> Menambahkan kunci repository Snipper"
+  mkdir -p /usr/share/keyrings
+  tmp="$(mktemp)"
+  fetch "$REPO_URL/snipper-archive-keyring.gpg" "$tmp"
+  install -m 0644 "$tmp" "$KEYRING"
+  rm -f "$tmp"
+
+  echo "==> Menambahkan repository $REPO_URL (apt)"
+  cat > "$SOURCES" <<SRC
 Types: deb
 URIs: $REPO_URL
 Suites: stable
 Components: main
 Signed-By: $KEYRING
 SRC
-chmod 0644 "$SOURCES"
+  chmod 0644 "$SOURCES"
 
-echo "==> apt update"
-apt-get update -o Dir::Etc::sourcelist="$SOURCES" -o Dir::Etc::sourceparts="-" -o APT::Get::List-Cleanup="0" >/dev/null
+  echo "==> apt update"
+  apt-get update -o Dir::Etc::sourcelist="$SOURCES" -o Dir::Etc::sourceparts="-" -o APT::Get::List-Cleanup="0" >/dev/null
 
-if [ "${1:-}" = "--setup-only" ]; then
-  echo "Repository siap. Install dengan:  sudo apt install snipper"
-  exit 0
+  if [ "$SETUP_ONLY" = 1 ]; then
+    echo "Repository siap. Install dengan:  sudo apt install snipper"
+    exit 0
+  fi
+  echo "==> apt install snipper"
+  DEBIAN_FRONTEND=noninteractive apt-get install -y snipper
+  done_msg "sudo apt update && sudo apt upgrade"
+}
+
+setup_dnf() {
+  REPOFILE=/etc/yum.repos.d/snipper.repo
+
+  echo "==> Menambahkan kunci repository Snipper"
+  rpm --import "$REPO_URL/snipper-archive-keyring.asc"
+
+  echo "==> Menambahkan repository $REPO_URL/rpm (dnf)"
+  tmp="$(mktemp)"
+  fetch "$REPO_URL/snipper.repo" "$tmp"
+  install -m 0644 "$tmp" "$REPOFILE"
+  rm -f "$tmp"
+
+  if [ "$SETUP_ONLY" = 1 ]; then
+    dnf -y makecache --repo snipper >/dev/null 2>&1 || dnf -y makecache >/dev/null
+    echo "Repository siap. Install dengan:  sudo dnf install snipper"
+    exit 0
+  fi
+  echo "==> dnf install snipper"
+  dnf -y install snipper
+  done_msg "sudo dnf upgrade"
+}
+
+if command -v apt-get >/dev/null 2>&1; then
+  setup_apt
+elif command -v dnf >/dev/null 2>&1; then
+  setup_dnf
+else
+  . /etc/os-release 2>/dev/null || true
+  echo "Distro ini (${PRETTY_NAME:-tidak dikenal}) belum didukung. Snipper tersedia untuk Ubuntu/Debian (apt) dan Fedora (dnf)." >&2
+  echo "Alternatif: git clone https://github.com/FajriGoBimbel/sniping-tools-ubuntu.git && cd sniping-tools-ubuntu && ./install.sh" >&2
+  exit 1
 fi
-
-echo "==> apt install snipper"
-DEBIAN_FRONTEND=noninteractive apt-get install -y snipper
-echo
-echo "Snipper terpasang. Buka 'Snipper' dari menu aplikasi, klik 'Izinkan', lalu pilih Allow."
-echo "Update berikutnya cukup: sudo apt update && sudo apt upgrade"

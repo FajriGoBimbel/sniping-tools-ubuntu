@@ -20,21 +20,32 @@
 <body>
 <main>
   <h1>Snipper</h1>
-  <p class="lead">Screenshot &amp; anotasi untuk Ubuntu 22.04 / 24.04 (Wayland &amp; X11).</p>
+  <p class="lead">Screenshot &amp; anotasi untuk Ubuntu 22.04 / 24.04 dan Fedora 41+ (Wayland &amp; X11).</p>
 
-  <h2>Install (satu perintah)</h2>
+  <h2>Install (satu perintah, Ubuntu &amp; Fedora)</h2>
   <pre><code>curl -fsSL @REPO_URL@/install.sh | sudo sh</code></pre>
 
-  <h2>Atau: tambahkan repository dulu, lalu pakai apt</h2>
+  <h2>Atau: tambahkan repository dulu, lalu pakai apt / dnf</h2>
   <pre><code>curl -fsSL @REPO_URL@/install.sh | sudo sh -s -- --setup-only
-sudo apt install snipper</code></pre>
+sudo apt install snipper     # Ubuntu
+sudo dnf install snipper     # Fedora</code></pre>
 
-  <h2>Update &amp; uninstall</h2>
+  <h2>Update &amp; uninstall (Ubuntu)</h2>
   <pre><code>sudo apt update &amp;&amp; sudo apt upgrade
 sudo apt remove snipper
 sudo rm /etc/apt/sources.list.d/snipper.sources /usr/share/keyrings/snipper-archive-keyring.gpg</code></pre>
 
-  <h2>Manual</h2>
+  <h2>Update &amp; uninstall (Fedora)</h2>
+  <pre><code>sudo dnf upgrade
+sudo dnf remove snipper
+sudo rm /etc/yum.repos.d/snipper.repo</code></pre>
+
+  <h2>Manual (Fedora)</h2>
+  <pre><code>sudo rpm --import @REPO_URL@/snipper-archive-keyring.asc
+sudo curl -fsSLo /etc/yum.repos.d/snipper.repo @REPO_URL@/snipper.repo
+sudo dnf install snipper</code></pre>
+
+  <h2>Manual (Ubuntu)</h2>
   <pre><code>sudo curl -fsSLo /usr/share/keyrings/snipper-archive-keyring.gpg @REPO_URL@/snipper-archive-keyring.gpg
 sudo curl -fsSLo /etc/apt/sources.list.d/snipper.sources @REPO_URL@/snipper.sources
 sudo apt update &amp;&amp; sudo apt install snipper</code></pre>

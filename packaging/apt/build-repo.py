@@ -63,6 +63,7 @@ def gpg(*args):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=os.path.join(ROOT, "public"))
+    ap.add_argument("--rpm-dir", help="directory containing rpm/ (output of packaging/rpm/build-rpm-repo.sh)")
     ap.add_argument("debs", nargs="*")
     args = ap.parse_args()
 
@@ -143,6 +144,20 @@ def main():
     )
     open(os.path.join(out, "snipper.sources"), "w").write(sources)
 
+    # Fedora / dnf
+    if args.rpm_dir:
+        shutil.copytree(os.path.join(args.rpm_dir, "rpm"), os.path.join(out, "rpm"))
+    repo_file = (
+        "[snipper]\n"
+        "name=Snipper\n"
+        f"baseurl={repo_url}/rpm\n"
+        "enabled=1\n"
+        "gpgcheck=1\n"
+        "repo_gpgcheck=1\n"
+        f"gpgkey={repo_url}/snipper-archive-keyring.asc\n"
+    )
+    open(os.path.join(out, "snipper.repo"), "w").write(repo_file)
+
     template = open(os.path.join(HERE, "setup.sh.in")).read()
     setup = os.path.join(out, "install.sh")
     open(setup, "w").write(template.replace("@REPO_URL@", repo_url))
@@ -151,7 +166,8 @@ def main():
     html = open(os.path.join(HERE, "index.html.in")).read().replace("@REPO_URL@", repo_url)
     open(os.path.join(out, "index.html"), "w").write(html)
     open(os.path.join(out, ".nojekyll"), "w").close()  # serve files as-is on GitHub Pages
-    print(f"APT repo written to {out} ({len(debs)} package(s)) for {repo_url}")
+    print(f"APT repo written to {out} ({len(debs)} package(s)) for {repo_url}"
+          + (" + dnf repo" if args.rpm_dir else ""))
 
 
 if __name__ == "__main__":
