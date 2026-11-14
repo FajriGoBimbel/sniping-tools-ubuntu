@@ -23,11 +23,9 @@ Dependensi (sudah ada di Ubuntu desktop 22.04/24.04):
 
 ### Cara tercepat — dari APT repository (tanpa download manual)
 
-Ganti `<username>` dengan akun/organisasi GitHub tempat repo ini dipublikasikan
-(lihat [Publikasi APT repository](#publikasi-apt-repository)).
 
 ```bash
-curl -fsSL https://<username>.github.io/sniping-tools/install.sh | sudo sh
+curl -fsSL https://fajrigobimbel.github.io/sniping-tools-ubuntu/install.sh | sudo sh
 ```
 
 Perintah itu menambahkan repository Snipper beserta kunci tanda tangannya, lalu menjalankan `apt install snipper`.
@@ -42,15 +40,15 @@ sudo apt remove snipper                   # uninstall
 Kalau hanya ingin menambahkan repository dan install sendiri dengan apt:
 
 ```bash
-curl -fsSL https://<username>.github.io/sniping-tools/install.sh | sudo sh -s -- --setup-only
+curl -fsSL https://fajrigobimbel.github.io/sniping-tools-ubuntu/install.sh | sudo sh -s -- --setup-only
 sudo apt install snipper
 ```
 
 Cara manual tanpa script:
 
 ```bash
-sudo curl -fsSLo /usr/share/keyrings/snipper-archive-keyring.gpg https://<username>.github.io/sniping-tools/snipper-archive-keyring.gpg
-sudo curl -fsSLo /etc/apt/sources.list.d/snipper.sources https://<username>.github.io/sniping-tools/snipper.sources
+sudo curl -fsSLo /usr/share/keyrings/snipper-archive-keyring.gpg https://fajrigobimbel.github.io/sniping-tools-ubuntu/snipper-archive-keyring.gpg
+sudo curl -fsSLo /etc/apt/sources.list.d/snipper.sources https://fajrigobimbel.github.io/sniping-tools-ubuntu/snipper.sources
 sudo apt update && sudo apt install snipper
 ```
 
@@ -163,14 +161,14 @@ journalctl --user --since "-10min" | grep -i snipper
 Untuk maintainer. Cukup dilakukan sekali; setelah itu setiap push ke `main` otomatis mem-build `.deb`,
 menandatangani repository, dan mempublikasikannya ke GitHub Pages (`.github/workflows/apt-repo.yml`).
 
-1. **Buat repo GitHub** bernama `sniping-tools`, lalu push proyek ini ke branch `main`.
+1. **Buat repo GitHub** (saat ini `FajriGoBimbel/sniping-tools-ubuntu`), lalu push proyek ini ke branch `main`.
 2. **Simpan kunci penanda tangan sebagai secret.** Buka *Settings → Secrets and variables → Actions → New repository secret*.
    Beri nama `APT_GPG_PRIVATE_KEY`, lalu tempel seluruh isi `~/.local/share/snipper-apt/private-key.asc`.
    Setelah tersimpan, hapus file itu (`rm ~/.local/share/snipper-apt/private-key.asc`).
    Kuncinya tetap ada di `~/.local/share/snipper-apt/gnupg`, jadi bisa diekspor ulang bila perlu.
 3. **Aktifkan Pages.** Buka *Settings → Pages → Source*, lalu pilih **GitHub Actions**.
 4. **Jalankan workflow** *APT repository* (push ke `main` atau *Run workflow*).
-   Repository akan tersedia di `https://<username>.github.io/sniping-tools/`.
+   Repository akan tersedia di `https://fajrigobimbel.github.io/sniping-tools-ubuntu/`.
 
 Untuk **merilis versi baru**, naikkan `VERSION` di `snipper/settings.py`, lalu push.
 `apt upgrade` hanya mengambil versi yang nomornya lebih tinggi.

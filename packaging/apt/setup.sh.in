@@ -15,6 +15,21 @@ if [ "$(id -u)" -ne 0 ]; then
   exit 1
 fi
 
+if ! command -v apt-get >/dev/null 2>&1; then
+  . /etc/os-release 2>/dev/null || true
+  echo "Sistem ini (${PRETTY_NAME:-distro non-Debian}) tidak memakai apt, jadi repository .deb Snipper tidak bisa dipakai." >&2
+  if command -v dnf >/dev/null 2>&1; then
+    cat >&2 <<MSG
+
+Untuk Fedora, pasang dari source (per user, tanpa repository):
+  sudo dnf install -y python3-gobject python3-cairo gtk4 libadwaita git
+  git clone https://github.com/FajriGoBimbel/sniping-tools-ubuntu.git
+  cd sniping-tools-ubuntu && ./install.sh
+MSG
+  fi
+  exit 1
+fi
+
 fetch() {
   if command -v curl >/dev/null 2>&1; then curl -fsSL "$1" -o "$2"
   elif command -v wget >/dev/null 2>&1; then wget -qO "$2" "$1"
