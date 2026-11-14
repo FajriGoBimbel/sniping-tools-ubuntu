@@ -1,0 +1,53 @@
+#!/bin/sh
+# Snipper APT repository setup.
+#   curl -fsSL @REPO_URL@/install.sh | sudo sh
+# Adds the signed Snipper repository, then installs snipper.
+# Only add the repository:  curl -fsSL @REPO_URL@/install.sh | sudo sh -s -- --setup-only
+# Afterwards updates arrive with: sudo apt update && sudo apt upgrade
+set -eu
+
+REPO_URL="@REPO_URL@"
+KEYRING=/usr/share/keyrings/snipper-archive-keyring.gpg
+SOURCES=/etc/apt/sources.list.d/snipper.sources
+
+if [ "$(id -u)" -ne 0 ]; then
+  echo "Jalankan dengan sudo:  curl -fsSL $REPO_URL/install.sh | sudo sh" >&2
+  exit 1
+fi
+
+fetch() {
+  if command -v curl >/dev/null 2>&1; then curl -fsSL "$1" -o "$2"
+  elif command -v wget >/dev/null 2>&1; then wget -qO "$2" "$1"
+  else echo "Butuh curl atau wget." >&2; exit 1
+  fi
+}
+
+echo "==> Menambahkan kunci repository Snipper"
+tmp="$(mktemp)"
+fetch "$REPO_URL/snipper-archive-keyring.gpg" "$tmp"
+install -m 0644 "$tmp" "$KEYRING"
+rm -f "$tmp"
+
+echo "==> Menambahkan repository $REPO_URL"
+cat > "$SOURCES" <<SRC
+Types: deb
+URIs: $REPO_URL
+Suites: stable
+Components: main
+Signed-By: $KEYRING
+SRC
+chmod 0644 "$SOURCES"
+
+echo "==> apt update"
+apt-get update -o Dir::Etc::sourcelist="$SOURCES" -o Dir::Etc::sourceparts="-" -o APT::Get::List-Cleanup="0" >/dev/null
+
+if [ "${1:-}" = "--setup-only" ]; then
+  echo "Repository siap. Install dengan:  sudo apt install snipper"
+  exit 0
+fi
+
+echo "==> apt install snipper"
+DEBIAN_FRONTEND=noninteractive apt-get install -y snipper
+echo
+echo "Snipper terpasang. Buka 'Snipper' dari menu aplikasi, klik 'Izinkan', lalu pilih Allow."
+echo "Update berikutnya cukup: sudo apt update && sudo apt upgrade"

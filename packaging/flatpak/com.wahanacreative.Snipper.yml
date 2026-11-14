@@ -1,0 +1,38 @@
+# Build: flatpak-builder --user --install --force-clean build-dir packaging/flatpak/com.wahanacreative.Snipper.yml
+# (run from the repository root; needs org.gnome.Platform//47 and org.gnome.Sdk//47)
+app-id: com.wahanacreative.Snipper
+runtime: org.gnome.Platform
+runtime-version: '47'
+sdk: org.gnome.Sdk
+command: snipper
+finish-args:
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --share=ipc
+  - --device=dri
+  - --filesystem=xdg-pictures
+  # tray icon (StatusNotifierItem)
+  - --talk-name=org.kde.StatusNotifierWatcher
+  - --own-name=org.kde.StatusNotifierItem-*
+modules:
+  - name: snipper
+    buildsystem: simple
+    build-commands:
+      - install -d /app/share/snipper/icons /app/bin
+      - cp -r snipper /app/share/snipper/snipper
+      - cp -r data/icons/tools /app/share/snipper/icons/tools
+      - |
+        cat > /app/bin/snipper <<'SH'
+        #!/usr/bin/env python3
+        import sys
+        sys.path.insert(0, "/app/share/snipper")
+        from snipper.app import main
+        sys.exit(main())
+        SH
+      - chmod 755 /app/bin/snipper
+      - install -Dm644 data/com.wahanacreative.Snipper.desktop /app/share/applications/com.wahanacreative.Snipper.desktop
+      - install -Dm644 data/icons/hicolor/scalable/apps/com.wahanacreative.Snipper.svg /app/share/icons/hicolor/scalable/apps/com.wahanacreative.Snipper.svg
+      - install -Dm644 data/com.wahanacreative.Snipper.metainfo.xml /app/share/metainfo/com.wahanacreative.Snipper.metainfo.xml
+    sources:
+      - type: dir
+        path: ../..

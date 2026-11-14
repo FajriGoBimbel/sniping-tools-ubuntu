@@ -1,0 +1,26 @@
+[Desktop Entry]
+Type=Application
+Name=Snipper
+GenericName=Screenshot & Anotasi
+Comment=Ambil screenshot lalu beri kotak, panah, dan teks
+Exec=snipper %f
+Icon=com.wahanacreative.Snipper
+Terminal=false
+Categories=Graphics;Utility;GTK;GNOME;
+Keywords=screenshot;snip;capture;annotate;anotasi;tangkapan;layar;
+MimeType=image/png;image/jpeg;
+StartupNotify=true
+DBusActivatable=false
+Actions=area;full;window;
+
+[Desktop Action area]
+Name=Capture area
+Exec=snipper --area
+
+[Desktop Action full]
+Name=Capture layar penuh
+Exec=snipper --full
+
+[Desktop Action window]
+Name=Capture jendela
+Exec=snipper --window

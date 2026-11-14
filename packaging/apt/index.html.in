@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Snipper APT Repository</title>
+<style>
+  :root { color-scheme: light dark; --bg:#fafafa; --fg:#1d1d1f; --muted:#6b6b70; --code:#eef0f3; --accent:#1c63c4; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#1b1b1d; --fg:#ececee; --muted:#9a9aa0; --code:#2a2b2f; --accent:#62a0ea; } }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.6 system-ui, "Ubuntu", sans-serif; }
+  main { max-width: 720px; margin: 0 auto; padding: 48px 16px; }
+  h1 { margin: 0 0 4px; font-size: 28px; }
+  p.lead { margin: 0 0 32px; color: var(--muted); }
+  h2 { font-size: 18px; margin: 32px 0 8px; }
+  pre { background: var(--code); padding: 14px 16px; border-radius: 8px; overflow-x: auto; font-size: 14px; }
+  code { font-family: "Ubuntu Mono", ui-monospace, monospace; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Snipper</h1>
+  <p class="lead">Screenshot &amp; anotasi untuk Ubuntu 22.04 / 24.04 (Wayland &amp; X11).</p>
+
+  <h2>Install (satu perintah)</h2>
+  <pre><code>curl -fsSL @REPO_URL@/install.sh | sudo sh</code></pre>
+
+  <h2>Atau: tambahkan repository dulu, lalu pakai apt</h2>
+  <pre><code>curl -fsSL @REPO_URL@/install.sh | sudo sh -s -- --setup-only
+sudo apt install snipper</code></pre>
+
+  <h2>Update &amp; uninstall</h2>
+  <pre><code>sudo apt update &amp;&amp; sudo apt upgrade
+sudo apt remove snipper
+sudo rm /etc/apt/sources.list.d/snipper.sources /usr/share/keyrings/snipper-archive-keyring.gpg</code></pre>
+
+  <h2>Manual</h2>
+  <pre><code>sudo curl -fsSLo /usr/share/keyrings/snipper-archive-keyring.gpg @REPO_URL@/snipper-archive-keyring.gpg
+sudo curl -fsSLo /etc/apt/sources.list.d/snipper.sources @REPO_URL@/snipper.sources
+sudo apt update &amp;&amp; sudo apt install snipper</code></pre>
+</main>
+</body>
+</html>
