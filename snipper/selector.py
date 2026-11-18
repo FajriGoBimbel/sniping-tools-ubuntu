@@ -42,7 +42,9 @@ class _MonitorOverlay(Gtk.Window):
         right.connect("pressed", lambda *a: self.selector.cancel())
         self.area.add_controller(right)
         motion = Gtk.EventControllerMotion()
+        motion.connect("enter", self._on_motion)
         motion.connect("motion", self._on_motion)
+        motion.connect("leave", self._on_leave)
         self.area.add_controller(motion)
         keys = Gtk.EventControllerKey()
         keys.connect("key-pressed", self._on_key)
@@ -75,6 +77,7 @@ class _MonitorOverlay(Gtk.Window):
 
     # events -------------------------------------------------------------
     def _on_begin(self, gesture, x, y):
+        self.selector.current = self
         self.start = self.end = self._to_image(x, y)
         self.area.queue_draw()
 
@@ -93,18 +96,22 @@ class _MonitorOverlay(Gtk.Window):
             self.selector.finish(self.region)
 
     def _on_motion(self, ctrl, x, y):
+        self.selector.current = self
         self.pointer = (x, y)
         self.area.queue_draw()
 
+    def _on_leave(self, ctrl):
+        self.pointer = None  # don't leave a stale crosshair on the monitor the pointer left
+        self.area.queue_draw()
+
     def _on_key(self, ctrl, keyval, keycode, state):
-        if keyval == Gdk.KEY_Escape:
-            self.selector.cancel()
-            return True
-        if keyval in (Gdk.KEY_Return, Gdk.KEY_KP_Enter, Gdk.KEY_space):
-            sel = self._selection()
-            self.selector.finish(sel if sel and sel[2] >= 4 and sel[3] >= 4 else self.region)
-            return True
-        return False
+        # Only one overlay has keyboard focus (usually monitor 1), so keys are routed to the
+        # overlay the user is actually working on, not to whichever window happens to be focused.
+        return self.selector.on_key(keyval)
+
+    def confirm(self):
+        sel = self._selection()
+        self.selector.finish(sel if sel and sel[2] >= 4 and sel[3] >= 4 else self.region)
 
     # drawing ------------------------------------------------------------
     def _layout(self, key, text, size, bold):
@@ -179,6 +186,7 @@ class AreaSelector:
         self.surface = surface
         self.callback = callback
         self.done = False
+        self.current = None  # overlay under the pointer / last interacted with
         regions = monitor_regions(surface.get_width(), surface.get_height())
         if len(regions) <= 1:
             regions = [(regions[0][0] if regions else None, (0, 0, surface.get_width(), surface.get_height()))]
@@ -188,6 +196,17 @@ class AreaSelector:
             win.set_application(app)
             self.windows.append(win)
             win.present()
+
+    def on_key(self, keyval):
+        if keyval == Gdk.KEY_Escape:
+            self.cancel()
+            return True
+        if keyval in (Gdk.KEY_Return, Gdk.KEY_KP_Enter, Gdk.KEY_space):
+            target = self.current or (self.windows[0] if self.windows else None)
+            if target is not None:
+                target.confirm()
+            return True
+        return False
 
     def _close_all(self):
         for w in self.windows:
