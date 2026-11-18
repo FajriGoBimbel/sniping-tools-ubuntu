@@ -2,9 +2,14 @@
 from __future__ import annotations
 
 import cairo
-from gi.repository import Gdk, Gtk, Pango, PangoCairo
+from gi.repository import Gdk, Gtk, Pango
 
+from . import render as R
 from .capture import monitor_regions
+
+_DIM = R.rgba(0, 0, 0, 0.45)
+_ACCENT = R.rgba(0.21, 0.52, 0.89, 1)
+_GUIDE = R.rgba(1, 1, 1, 0.35)
 
 
 class _MonitorOverlay(Gtk.Window):
@@ -16,8 +21,11 @@ class _MonitorOverlay(Gtk.Window):
         self.set_title("Snipper — pilih area")
         self.add_css_class("snipper-overlay")
 
-        self.area = Gtk.DrawingArea()
-        self.area.set_draw_func(self._draw)
+        self.area = _OverlayView(self)
+        self.area.set_hexpand(True)
+        self.area.set_vexpand(True)
+        self._texture = None  # this monitor's slice of the screenshot, uploaded to the GPU once
+        self._layouts = {}
         self.area.set_cursor(Gdk.Cursor.new_from_name("crosshair", None))
         self.set_child(self.area)
 
@@ -99,87 +107,68 @@ class _MonitorOverlay(Gtk.Window):
         return False
 
     # drawing ------------------------------------------------------------
-    def _draw(self, area, cr, width, height):
+    def _layout(self, key, text, size, bold):
+        layout = self._layouts.get(key)
+        if layout is None:
+            layout = self.area.create_pango_layout(None)
+            desc = Pango.FontDescription.from_string(f"Sans {'Bold ' if bold else ''}{size}")
+            layout.set_font_description(desc)
+            self._layouts[key] = layout
+        if layout.get_text() != text:
+            layout.set_text(text, -1)
+        return layout
+
+    def _snapshot(self, snapshot, width, height):
+        """Everything here is GPU work: one cached texture plus a handful of colour nodes."""
+        if width <= 0 or height <= 0:
+            return
         rx, ry, rw, rh = self.region
-        sx, sy = rw / max(1, width), rh / max(1, height)
-        cr.save()
-        cr.scale(1 / sx, 1 / sy)
-        cr.translate(-rx, -ry)
-        cr.set_source_surface(self.selector.surface, 0, 0)
-        cr.paint()
-        cr.restore()
+        sx, sy = rw / width, rh / height
+        if self._texture is None:
+            from .document import crop_surface
+
+            self._texture = R.texture_from_surface(crop_surface(self.selector.surface, rx, ry, rw, rh))
+        R.append_texture(snapshot, self._texture, R.rect(0, 0, width, height), R.device_scale(self) / sx)
 
         sel = self._selection()
-        # dim everything except the selection
-        cr.set_source_rgba(0, 0, 0, 0.45)
-        cr.set_fill_rule(cairo.FILL_RULE_EVEN_ODD)
-        cr.rectangle(0, 0, width, height)
-        if sel:
-            x, y, w, h = sel
-            vx, vy, vw, vh = (x - rx) / sx, (y - ry) / sy, w / sx, h / sy
-            cr.rectangle(vx, vy, vw, vh)
-        cr.fill()
-
+        hole = None
         if sel and sel[2] > 0 and sel[3] > 0:
-            cr.set_source_rgba(0.21, 0.52, 0.89, 1)
-            cr.set_line_width(1.5)
-            cr.rectangle(vx + 0.5, vy + 0.5, vw - 1, vh - 1)
-            cr.stroke()
-            self._label(cr, f"{w} × {h}", vx, vy + vh + 8, width, height, above_y=vy - 8)
+            x, y, w, h = sel
+            hole = ((x - rx) / sx, (y - ry) / sy, w / sx, h / sy)
+        R.dim_outside(snapshot, _DIM, width, height, hole)
+
+        if hole:
+            vx, vy, vw, vh = hole
+            R.outline(snapshot, _ACCENT, vx, vy, vw, vh, 1.5)
+            self._label(snapshot, f"{sel[2]} × {sel[3]}", vx, vy + vh + 8, width, height, above_y=vy - 8)
         else:
             # crosshair guides help aim on a dimmed screen
             if self.pointer:
                 px, py = self.pointer
-                cr.set_source_rgba(1, 1, 1, 0.35)
-                cr.set_line_width(1)
-                cr.move_to(0, int(py) + 0.5)
-                cr.line_to(width, int(py) + 0.5)
-                cr.move_to(int(px) + 0.5, 0)
-                cr.line_to(int(px) + 0.5, height)
-                cr.stroke()
-            self._hint(cr, width)
+                R.fill(snapshot, _GUIDE, 0, int(py), width, 1)
+                R.fill(snapshot, _GUIDE, int(px), 0, 1, height)
+            hint = self._layout("hint", "Drag untuk memilih area  ·  Klik = layar ini  ·  Esc = batal", 12, False)
+            _ink, log = hint.get_pixel_extents()
+            R.pill(snapshot, hint, (width - log.width - 12) / 2, 24)
 
-    def _text_layout(self, cr, text, size=13, bold=True):
-        layout = PangoCairo.create_layout(cr)
-        desc = Pango.FontDescription.from_string(f"Sans {'Bold ' if bold else ''}{size}")
-        layout.set_font_description(desc)
-        layout.set_text(text, -1)
-        return layout
-
-    def _pill(self, cr, layout, x, y):
-        _ink, log = layout.get_pixel_extents()
-        pad = 6
-        w, h = log.width + 2 * pad, log.height + 2 * pad
-        r = 6
-        cr.new_sub_path()
-        cr.arc(x + w - r, y + r, r, -1.5708, 0)
-        cr.arc(x + w - r, y + h - r, r, 0, 1.5708)
-        cr.arc(x + r, y + h - r, r, 1.5708, 3.1416)
-        cr.arc(x + r, y + r, r, 3.1416, 4.7124)
-        cr.close_path()
-        cr.set_source_rgba(0.1, 0.1, 0.12, 0.85)
-        cr.fill()
-        cr.move_to(x + pad, y + pad)
-        cr.set_source_rgb(1, 1, 1)
-        PangoCairo.show_layout(cr, layout)
-        return w, h
-
-    def _label(self, cr, text, x, y, width, height, above_y):
-        layout = self._text_layout(cr, text)
+    def _label(self, snapshot, text, x, y, width, height, above_y):
+        layout = self._layout("label", text, 13, True)
         _ink, log = layout.get_pixel_extents()
         w, h = log.width + 12, log.height + 12
         if y + h > height:
             y = above_y - h
         x = min(max(0, x), width - w)
         y = min(max(0, y), height - h)
-        self._pill(cr, layout, x, y)
+        R.pill(snapshot, layout, x, y)
 
-    def _hint(self, cr, width):
-        layout = self._text_layout(
-            cr, "Drag untuk memilih area  ·  Klik = layar ini  ·  Esc = batal", size=12, bold=False
-        )
-        _ink, log = layout.get_pixel_extents()
-        self._pill(cr, layout, (width - log.width - 12) / 2, 24)
+
+class _OverlayView(Gtk.Widget):
+    def __init__(self, owner):
+        super().__init__()
+        self.owner = owner
+
+    def do_snapshot(self, snapshot):
+        self.owner._snapshot(snapshot, self.get_width(), self.get_height())
 
 
 class AreaSelector:
